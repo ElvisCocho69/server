@@ -1,0 +1,36 @@
+/*
+ * Autorización de endpoints de products
+ */
+authReqConfig.requestMatchers(HttpMethod.GET, "/products")
+        .hasAnyRole(Role.ADMINISTRATOR.name(), Role.RECEPTIONIST.name());
+
+authReqConfig.requestMatchers(HttpMethod.GET, "/products/{productId}")
+        .hasAnyRole(Role.ADMINISTRATOR.name(), Role.RECEPTIONIST.name());
+
+authReqConfig.requestMatchers(HttpMethod.POST, "/products")
+        .hasRole(Role.ADMINISTRATOR.name());
+
+authReqConfig.requestMatchers(HttpMethod.PUT, "/products/{productId}")
+        .hasRole(Role.ADMINISTRATOR.name());
+
+authReqConfig.requestMatchers(HttpMethod.PUT, "/products/{productId}/disabled")
+        .hasRole(Role.ADMINISTRATOR.name());
+
+/*
+ * Autorización de endpoints de categories
+ */
+authReqConfig.requestMatchers(HttpMethod.GET, "/categories")
+        .hasAnyRole(Role.ADMINISTRATOR.name(), Role.RECEPTIONIST.name());
+
+authReqConfig.requestMatchers(HttpMethod.GET, "/categories/{categoryId}")
+        .hasAnyRole(Role.ADMINISTRATOR.name(), Role.RECEPTIONIST.name());
+
+authReqConfig.requestMatchers(HttpMethod.POST, "/categories")
+        .hasRole(Role.ADMINISTRATOR.name());
+
+authReqConfig.requestMatchers(HttpMethod.PUT, "/categories/{categoryId}")
+        .hasRole(Role.ADMINISTRATOR.name());
+
+authReqConfig.requestMatchers(HttpMethod.PUT, "/categories/{categoryId}/disabled")
+        .hasRole(Role.ADMINISTRATOR.name());
+
