@@ -238,3 +238,9 @@ SELECT * FROM (SELECT 'Administrador', 'Principal', 'admin@gmail.com', '12345678
 WHERE NOT EXISTS (
   SELECT 1 FROM users WHERE username = 'admin123'
 );
+
+CREATE TABLE chatbot_contexto (
+    telefono VARCHAR(21) NOT NULL PRIMARY KEY,
+    data TEXT,
+    actualizado_en TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
