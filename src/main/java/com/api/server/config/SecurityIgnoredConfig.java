@@ -10,7 +10,8 @@ public class SecurityIgnoredConfig {
     @Bean
     public WebSecurityCustomizer webSecurityCustomizer() {
         return (web) -> web.ignoring()
-                           .requestMatchers("/files/**");  // se salta TODOS los filtros
+                           .requestMatchers("/files/**")    // Para servir archivos estáticos
+                           .requestMatchers("/api/designs") // Para el endpoint de guardado
+                           .requestMatchers("/api/**");     // O ignora toda la API si es necesario
     }
 }
-
