@@ -68,7 +68,7 @@ public class HttpSecurityConfig {
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList( "*"));
+        configuration.setAllowedOrigins(Arrays.asList( "*", "https://api-fammeba.duckdns.org", "http://fammeba.duckdns.org", "http://ip-172-16-0-248.ec2.internal"));
 
         configuration.setAllowedMethods(Arrays.asList("*"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
