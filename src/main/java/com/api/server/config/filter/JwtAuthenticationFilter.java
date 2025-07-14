@@ -5,10 +5,12 @@ import java.util.Date;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetails;
 import org.springframework.stereotype.Component;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -36,73 +38,82 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Autowired
     private UserService userService;
 
+    /** Para evaluar rutas tipo "/files/**" */
+    private static final AntPathMatcher pathMatcher = new AntPathMatcher();
+
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+    protected void doFilterInternal(HttpServletRequest request,
+                                    HttpServletResponse response,
+                                    FilterChain filterChain)
             throws ServletException, IOException {
 
-        // 1. Obtener Authorization Header
-        // 2. Obtener token
+        /* -----------------------------------------------------------
+           BYPASS para archivos públicos: /files/**  (GET y HEAD)
+           ----------------------------------------------------------- */
+        String path   = request.getServletPath();
+        String method = request.getMethod();
+
+        if (pathMatcher.match("/files/**", path) &&
+            (HttpMethod.GET.matches(method) || HttpMethod.HEAD.matches(method))) {
+
+            // Pasa la petición sin añadir autenticación ni tocar el contexto
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        /* -----------------------------------------------------------
+           Resto de lógica JWT normal
+           ----------------------------------------------------------- */
         String jwt = jwtService.extractJwtFromRequest(request);
 
-        if (jwt == null || !StringUtils.hasText(jwt)) {
+        if (!StringUtils.hasText(jwt)) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        // 2.5 Obtener token no expirado y valido desde base de datos
-        Optional<JwtToken> token = jwtRepository.findByToken(jwt);
-        boolean isValid = validateToken(token);
-
-        if (!isValid) {
+        // Obtener token registrado y comprobar validez
+        Optional<JwtToken> tokenOpt = jwtRepository.findByToken(jwt);
+        if (!validateToken(tokenOpt)) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        // 3. Obtener el subject/username desde el token, esta acción valida el formato
-        // del token, firma y fecha de expiración
+        // Extraer usuario y poblar SecurityContext
         String username = jwtService.extractUsername(jwt);
 
-
-        // 4. Setear objeto authentication dentro de security context holder
         User user = userService.findOneByUsername(username)
-                .orElseThrow(() -> new ObjectNotFoundException("User not found. Username: " + username));
-        UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                username, null, user.getAuthorities());
+                .orElseThrow(() ->
+                     new ObjectNotFoundException("User not found. Username: " + username));
+
+        UsernamePasswordAuthenticationToken authToken =
+                new UsernamePasswordAuthenticationToken(username, null, user.getAuthorities());
         authToken.setDetails(new WebAuthenticationDetails(request));
+
         SecurityContextHolder.getContext().setAuthentication(authToken);
 
-        // 5. Ejecutar el registro de filtros
+        // Continuar con el resto de filtros
         filterChain.doFilter(request, response);
-
     }
+
+    /* -----------------------------------------------------------
+       Métodos auxiliares
+       ----------------------------------------------------------- */
 
     private boolean validateToken(Optional<JwtToken> optionalJwtToken) {
 
-        if (!optionalJwtToken.isPresent()) {
-            System.out.println("Token no existe o no fue generado en nuestro sistema");
+        if (optionalJwtToken.isEmpty()) {
+            System.out.println("Token no existe o no fue emitido por nuestro sistema");
             return false;
         }
 
         JwtToken token = optionalJwtToken.get();
+        boolean valid = token.isValid() && token.getExpiration().after(new Date());
 
-        Date now = new Date(System.currentTimeMillis());
-
-        boolean isValid = token.isValid() && token.getExpiration().after(now);
-
-        if (!isValid) {
-            System.out.println("Token inválido");
-            updateTokenStatus(token);
+        if (!valid) {
+            System.out.println("Token inválido o expirado");
+            token.setValid(false);
+            jwtRepository.save(token);
         }
-
-        return isValid;
-
+        return valid;
     }
-
-    private void updateTokenStatus(JwtToken token) {
-        
-        token.setValid(false);
-        jwtRepository.save(token);
-
-    }
-
 }
